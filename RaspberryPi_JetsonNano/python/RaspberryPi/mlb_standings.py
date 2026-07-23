@@ -8,7 +8,7 @@ libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__)
 if os.path.exists(libdir):
     sys.path.append(libdir)
 
-##from waveshare_epd import epd7in5_V2
+from waveshare_epd import epd7in5_V2
 from PIL import Image, ImageDraw, ImageFont
 
 logging.basicConfig(level=logging.INFO)
@@ -19,9 +19,9 @@ class epd:
 
 try:
     logging.info("Initializing 7.5in V2 Display...")
-    ##epd = epd7in5_V2.EPD()
-    ##epd.init()
-    ##epd.Clear()
+    epd = epd7in5_V2.EPD()
+    epd.init()
+    epd.Clear()
 
     # Create a blank white canvas matching the display's dimensions
     # 255 represents white in a 1-bit pixel mode ('1')
@@ -58,19 +58,18 @@ try:
     draw.text((650,40), "GB", font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30), fill=0, anchor="mm")
     # Send the canvas buffer to the screen hardware
     logging.info("Updating display...")
-    ##epd.display(epd.getbuffer(background))
+    epd.display(epd.getbuffer(background))
 
     # Crucial step: put the display hardware to sleep to save power and prevent burn-in
     logging.info("Putting display to deep sleep...")
-    ##epd.sleep()
+    epd.sleep()
     background.show()
 
-    input("Press Enter to exit...")
 
 except IOError as e:
     logging.error(f"Hardware/SPI error: {e}")
 
 except KeyboardInterrupt:    
     logging.info("Script stopped by user.")
-    ##epd7in5_V2.epdconfig.module_exit()
+    epd7in5_V2.epdconfig.module_exit()
     exit()
