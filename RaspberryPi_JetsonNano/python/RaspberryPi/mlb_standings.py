@@ -26,7 +26,8 @@ try:
     # Create a blank white canvas matching the display's dimensions
     # 255 represents white in a 1-bit pixel mode ('1')
     background = Image.new('1', (epd.width, epd.height), 255)
-    teamlogo = Image.open( "C:\\git\\real_eink\\MLB Logos\\143.png")
+    logo_path = os.path.expanduser("~/testrepo/e-Paper/MLB Logos/143.png")
+    teamlogo = Image.open(logo_path)
     teamlogo = teamlogo.resize((240, 240))
     draw = draw = ImageDraw.Draw(background)
     text = "American League East"
@@ -46,7 +47,7 @@ try:
         print("Using Default font")
 
     for i in range(5):
-        teamlogo = Image.open( "C:\\git\\real_eink\\MLB Logos\\143.png")
+        teamlogo = Image.open(logo_path)
         teamlogo = teamlogo.resize((75, 75))
         logging.info(f"Pasting team logo iteration...")
         height_offset = i*85 +60
