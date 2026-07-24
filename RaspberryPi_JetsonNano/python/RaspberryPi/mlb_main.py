@@ -85,8 +85,12 @@ def make_image_files():
             # Save & view
             safe_div_name = div_name.replace(" ", "_").lower()
             file_path = os.path.join(save_dir, f"{safe_div_name}_standings.png")
+            epd.display(epd.getbuffer(background))
+            logging.info("Putting display to deep sleep...")
+            epd.sleep()
             background.save(file_path)
             logging.info(f"Saved: {file_path}")
+
 
             if sys.platform == "win32":
                 os.startfile(file_path)
