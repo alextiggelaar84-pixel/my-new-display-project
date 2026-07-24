@@ -38,7 +38,7 @@ def make_image_files():
     
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
     try:
-        font = ImageFont.truetype(font_path, 30)
+        font = ImageFont.truetype(font_path, 28)
     except IOError:
         logging.warning("DejaVu font not found, falling back to default font.")
         font = ImageFont.load_default()
@@ -47,13 +47,21 @@ def make_image_files():
 
     for league_id in LEAGUES:
         try:
+            logging.info(f"Fetching standings for league {league_id}...")
             standings = statsapi.standings_data(leagueId=league_id)
         except Exception as e:
             logging.error(f"Failed to fetch standings data for league {league_id}: {e}")
             continue
 
-        for division_id, division in standings.items():
-            div_name = division.get('div_name', 'Division')
+        if not standings:
+            logging.warning(f"No standings data returned for league {league_id}")
+            continue
+
+        for div_id, division in standings.items():
+            # Get division name safely
+            div_name = division.get('div_name') or division.get('name') or f"Division_{div_id}"
+            logging.info(f"Processing division: {div_name}")
+
             background = Image.new('1', (EPD_WIDTH, EPD_HEIGHT), 255)
             draw = ImageDraw.Draw(background)
 
@@ -63,41 +71,54 @@ def make_image_files():
             draw.text((450, 45), "PCT", font=font, fill=0, anchor="mm")
             draw.text((650, 45), "GB", font=font, fill=0, anchor="mm")
 
-            # Division teams
-            for i, team in enumerate(division.get('teams', [])):
-                team_name = team.get('name')
-                
-                # Fetch team ID dynamically for logo path
-                team_info = statsapi.lookup_team(team_name)
-                if team_info:
-                    team_id = team_info[0]['id']
-                    logo_path = os.path.join(STANDINGS_DIR, f"{team_id}.png")
+            teams = division.get('teams', [])
+            if not teams:
+                logging.warning(f"No teams found for division {div_name}")
+                continue
 
+            # Division teams loop
+            for i, team in enumerate(teams):
+                # 1. Fetch team ID directly from the API response (no lookup needed)
+                team_id = team.get('team_id') or team.get('id')
+                
+                if team_id:
+                    logo_path = os.path.join(STANDINGS_DIR, f"{team_id}.png")
                     if os.path.exists(logo_path):
                         try:
                             with Image.open(logo_path) as logo:
-                                teamlogo = logo.resize((75, 75))
-                                logo_y = i * 80 + 60
+                                teamlogo = logo.resize((70, 70))
+                                logo_y = i * 75 + 65
                                 background.paste(teamlogo, (40, logo_y))
                         except Exception as logo_err:
                             logging.error(f"Error pasting logo {logo_path}: {logo_err}")
+                    else:
+                        logging.warning(f"Logo not found for team ID {team_id} at {logo_path}")
 
-                wins = team.get('w', 0)
-                losses = team.get('l', 0)
-                gb = team.get('gb', '-')
-                pct = wins / (wins + losses) if (wins + losses) > 0 else 0
+                # 2. Extract stats safely
+                wins = team.get('w', team.get('wins', 0))
+                losses = team.get('l', team.get('losses', 0))
+                gb = team.get('gb', team.get('gamesBack', '-'))
+                
+                # Percentage calculation
+                pct_val = team.get('pct')
+                if pct_val is not None:
+                    try:
+                        pct = float(pct_val)
+                    except ValueError:
+                        pct = 0.0
+                else:
+                    pct = wins / (wins + losses) if (wins + losses) > 0 else 0.0
 
-                text_y = i * 80 + 100
+                text_y = i * 75 + 100
                 draw.text((250, text_y), f"{wins}-{losses}", font=font, fill=0, anchor="mm")
                 draw.text((450, text_y), f"{pct:.3f}", font=font, fill=0, anchor="mm")
-                draw.text((650, text_y), f"{gb}", font=font, fill=0, anchor="mm")
+                draw.text((650, text_y), f"{str(gb)}", font=font, fill=0, anchor="mm")
 
             # Save PNG file
             safe_div_name = div_name.replace(" ", "_").lower()
             file_path = os.path.join(STANDINGS_DIR, f"{safe_div_name}_standings.png")
             background.save(file_path)
             logging.info(f"Generated and saved: {file_path}")
-
 
 def get_standings_images():
     """Returns a sorted list of generated PNG standings files."""
