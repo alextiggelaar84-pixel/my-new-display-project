@@ -54,9 +54,9 @@ try:
         background.paste(teamlogo, (40,height_offset))
 
     draw.text((center_x, 15), text, font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30), fill=0, anchor="mm")
-    draw.text((250,40), "W-L", font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30), fill=0, anchor="mm")
-    draw.text((450,40), "PCT", font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30), fill=0, anchor="mm")
-    draw.text((650,40), "GB", font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30), fill=0, anchor="mm")
+    draw.text((250,45), "W-L", font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30), fill=0, anchor="mm")
+    draw.text((450,45), "PCT", font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30), fill=0, anchor="mm")
+    draw.text((650,45), "GB", font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30), fill=0, anchor="mm")
     # Send the canvas buffer to the screen hardware
     logging.info("Updating display...")
     epd.display(epd.getbuffer(background))
@@ -64,7 +64,7 @@ try:
     # Crucial step: put the display hardware to sleep to save power and prevent burn-in
     logging.info("Putting display to deep sleep...")
     epd.sleep()
-    background.show()
+    ##background.show()
 
 
 except IOError as e:

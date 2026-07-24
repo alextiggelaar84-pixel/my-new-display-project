@@ -45,7 +45,7 @@ try:
     # Crucial step: put the display hardware to sleep to save power and prevent burn-in
     logging.info("Putting display to deep sleep...")
     epd.sleep()
-    background.show()
+    ##background.show()
 
 except IOError as e:
     logging.error(f"Hardware/SPI error: {e}")
