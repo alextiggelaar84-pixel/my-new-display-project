@@ -1,65 +1,75 @@
 import os
 import sys
 import logging
+from PIL import Image
 
-# Set up local library path just like the original script
-libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'lib')
-if os.path.exists(libdir):
-    sys.path.append(libdir)
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-##from waveshare_epd import epd7in5_V2
-from PIL import Image, ImageDraw, ImageFont
+def get_git_base_path():
+    """Dynamically finds the 'git' directory in the current working/script path."""
+    current_path = os.path.abspath(__file__)
+    parts = current_path.split(os.sep)
+    
+    # Look for 'git' in the path (case-insensitive)
+    for i, part in enumerate(parts):
+        if part.lower() == 'git':
+            # Reconstruct path up to and including 'git'
+            return os.sep.join(parts[:i+1])
+            
+    # Fallback to current working directory if 'git' is not in the folder path
+    logging.warning("'git' folder not found in script path. Falling back to relative path from execution directory.")
+    return os.getcwd()
 
-logging.basicConfig(level=logging.INFO)
+# Dynamically set LOGO_DIR starting from the 'git' folder
+BASE_GIT_DIR = get_git_base_path()
+LOGO_DIR = os.path.join(BASE_GIT_DIR, "real_eink", "MLB Logos")
 
-class epd:
-    width = 800
-    height = 480
+def test_display_logos():
+    logging.info(f"Resolved Logo Directory: {LOGO_DIR}")
 
-try:
-    logging.info("Initializing 7.5in V2 Display...")
-    ##epd = epd7in5_V2.EPD()
-    ##epd.init()
-    ##epd.Clear()
+    if not os.path.exists(LOGO_DIR):
+        logging.error(f"Directory not found: {LOGO_DIR}")
+        return
 
-    # Create a blank white canvas matching the display's dimensions
-    # 255 represents white in a 1-bit pixel mode ('1')
-    image = Image.new('1', (epd.width, epd.height), 255)
-    draw = ImageDraw.Draw(image)
+    # Find all PNG files in the logo folder
+    logo_files = [f for f in os.listdir(LOGO_DIR) if f.lower().endswith('.png')]
+    
+    if not logo_files:
+        logging.warning(f"No PNG files found in {LOGO_DIR}")
+        return
 
-    # Load a standard default system font
-    # Note: load_default() doesn't allow changing size, but works out-of-the-box
-    # Load a pre-installed system font and set it to a large, readable size (e.g., 40)
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 40)
-        print("Using DejaVuSans-Bold font at size 40")
-    except IOError:
-        logging.warning("DejaVu font not found, falling back to default.")
-        font = ImageFont.load_default()
-        print("Using Default font")
-    text = "Hello World"
+    logging.info(f"Found {len(logo_files)} logos. Processing into 1-bit black & white...")
 
-    # Calculate exact middle coordinates for the text bounding box
-    # 'anchor="mm"' tells PIL to center the text exactly on these coordinates
-    center_x = epd.width // 2
-    center_y = epd.height // 2
+    for filename in logo_files:
+        logo_path = os.path.join(LOGO_DIR, filename)
+        
+        try:
+            # 1. Open original image
+            logo = Image.open(logo_path)
 
-    logging.info("Drawing text...")
-    draw.text((center_x, center_y), text, font=font, fill=0, anchor="mm")
+            # 2. Handle transparent PNG backgrounds (fill transparency with solid white)
+            if logo.mode in ('RGBA', 'LA') or (logo.mode == 'P' and 'transparency' in logo.info):
+                alpha = logo.convert('RGBA').split()[-1]
+                bg = Image.new('RGBA', logo.size, (255, 255, 255, 255))
+                bg.paste(logo, mask=alpha)
+                logo = bg.convert('RGB')
+            else:
+                logo = logo.convert('RGB')
 
-    # Send the canvas buffer to the screen hardware
-    logging.info("Updating display...")
-    ##epd.display(epd.getbuffer(image))
+            # 3. Convert directly to 1-bit monochrome (Strict Black and White for e-Paper)
+            bw_logo = logo.convert('1')
 
-    # Crucial step: put the display hardware to sleep to save power and prevent burn-in
-    logging.info("Putting display to deep sleep...")
-    ##epd.sleep()
-    image.show()
+            logging.info(f"Displaying: {filename} (Mode: {bw_logo.mode}, Size: {bw_logo.size})")
 
-except IOError as e:
-    logging.error(f"Hardware/SPI error: {e}")
+            # 4. Show the image in native system viewer
+            bw_logo.show()
 
-except KeyboardInterrupt:    
-    logging.info("Script stopped by user.")
-    ##epd7in5_V2.epdconfig.module_exit()
-    exit()
+            # Interactive step-through
+            input(f"Showing '{filename}'. Press Enter in console for next image...")
+
+        except Exception as e:
+            logging.error(f"Failed to process {filename}: {e}")
+
+if __name__ == "__main__":
+    test_display_logos()
