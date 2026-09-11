@@ -141,7 +141,7 @@ def main_loop():
                 if os.path.exists(file_path):
                     update_display(epd, file_path)
                     logging.info("Waiting 60 seconds before next division...")
-                    time.sleep(60)  # Pause 1 minute between divisions
+                    time.sleep(180)  # Pause 1 minute between divisions
                 else:
                     logging.warning(f"File {file_path} not ready yet, skipping step.")
 

@@ -6,8 +6,8 @@ import threading
 from PIL import Image
 
 # Import both script modules
-import mlb 
-import game_info
+import mlb
+import Game_info as game_info
 
 
 try:
@@ -19,23 +19,23 @@ except ImportError:
 
 
 # Target directory where generated images live
-STANDINGS_DIR = r"C:\git\real_eink\RaspberryPi_JetsonNano\python\Windows\standings"
+MLB_STANDINGS_DIR = r"C:\Users\sherr\Documents\git\real_eink\standings"
 TWELVE_HOURS_IN_SECONDS = 12 * 60 * 60
 TEN_MINUTES_IN_SECONDS = 10 * 60
-ONE_MINUTE_IN_SECONDS = 60
+THREE_MINUTE_IN_SECONDS = 180
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 def get_all_display_images():
     """Returns a sorted list of all generated PNG files (Game Info + Division Standings)."""
-    pattern = os.path.join(STANDINGS_DIR, "*.png")
+    pattern = os.path.join(MLB_STANDINGS_DIR, "*.png")
     return sorted(glob.glob(pattern))
 
 
 def check_and_generate_standings():
     """Runs mlb.make_image_files() if standings are missing or older than 12 hours."""
-    pattern = os.path.join(STANDINGS_DIR, "*_standings.png")
+    pattern = os.path.join(MLB_STANDINGS_DIR, "*_standings.png")
     images = glob.glob(pattern)
     
     should_run = False
@@ -98,7 +98,7 @@ def run_display_cycle():
         
         if not images:
             logging.warning("No images available to display. Waiting 1 minute...")
-            time.sleep(ONE_MINUTE_IN_SECONDS)
+            time.sleep(THREE_MINUTE_IN_SECONDS)
             continue
             
         for img_path in images:
@@ -121,7 +121,7 @@ def run_display_cycle():
                 logging.error(f"Failed to display image {img_path}: {e}")
             
             # Wait 60 seconds before showing the next image
-            time.sleep(ONE_MINUTE_IN_SECONDS)
+            time.sleep(THREE_MINUTE_IN_SECONDS)
 
 
 if __name__ == "__main__":
