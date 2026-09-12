@@ -12,7 +12,7 @@ import mlb
 
 # Dynamic directory resolution for standings/game PNGs across Linux & Windows
 if sys.platform.startswith("linux"):
-    MLB_STANDINGS_DIR = os.path.expanduser("~/testrepo/e-Paper/standings")
+    MLB_STANDINGS_DIR = os.path.expanduser("~/my-new-display-project/standings")
 else:
     MLB_STANDINGS_DIR = r"C:\Users\sherr\Documents\git\real_eink\standings"
 
@@ -24,7 +24,7 @@ possible_lib_paths = [
     os.path.join(script_dir, "lib"),
     os.path.abspath(os.path.join(script_dir, "..", "lib")),
     os.path.expanduser(
-        "~/testrepo/e-Paper/RaspberryPi_JetsonNano/python/lib"
+        "~/my-new-display-project/RaspberryPi_JetsonNano/python/lib"
     ),
 ]
 
@@ -66,7 +66,6 @@ def log_logo_diagnostics():
         files = os.listdir(mlb_logo_dir)
         pngs = [f for f in files if f.endswith(".png")]
         print(f"[mlb.py] Found {len(pngs)} PNG logo files in {mlb_logo_dir}")
-        print(f"[mlb.py] Sample files: {pngs[:5]}")
     else:
         print(f"[ERROR] LOGO_DIR for mlb.py does not exist on disk!")
     print("-----------------------------\n")

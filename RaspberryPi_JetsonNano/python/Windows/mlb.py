@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 import statsapi
 
 if sys.platform.startswith("linux"):
-    save_dir = os.path.expanduser("~/testrepo/e-Paper/standings")
+    save_dir = os.path.expanduser("~/my-new-display-project/standings")
 else:
     save_dir = r"C:\Users\sherr\Documents\git\real_eink\standings"
 
@@ -24,8 +24,8 @@ class epd:
 def get_logo_dir():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     candidates = [
+        r"C:\Users\sherr\Documents\git\real_eink\MLB Logos",
         os.path.expanduser("~/my-new-display-project/MLB Logos"),
-        os.path.expanduser("~/testrepo/e-Paper/MLB Logos"),
         os.path.abspath(os.path.join(script_dir, "..", "MLB Logos")),
         os.path.abspath(os.path.join(script_dir, "MLB Logos")),
         r"C:\git\real_eink\MLB Logos",
@@ -51,9 +51,32 @@ def load_font(size):
             return ImageFont.load_default()
 
 
+def extract_team_id(team):
+    """Safely extracts team ID from statsapi standings dictionary structure."""
+    for key in ["team_id", "id", "teamId"]:
+        if key in team and team[key]:
+            return team[key]
+
+    if "team" in team and isinstance(team["team"], dict):
+        if "id" in team["team"]:
+            return team["team"]["id"]
+
+    team_name = team.get("name") or team.get("team_name") or team.get("div_name")
+    if team_name:
+        try:
+            info = statsapi.lookup_team(team_name)
+            if info:
+                return info[0]["id"]
+        except Exception:
+            pass
+
+    return None
+
+
 def make_image_files():
     try:
         logging.info("Generating division standings images...")
+        logging.info(f"Using LOGO_DIR: {LOGO_DIR}")
 
         center_x = epd.width // 2
         font_header = load_font(30)
@@ -87,10 +110,10 @@ def make_image_files():
 
                 # Loop through division teams
                 for i, team in enumerate(division.get("teams", [])):
-                    team_id = team.get("team_id") or team.get("id")
+                    team_id = extract_team_id(team)
 
                     if team_id:
-                        logo_path = os.path.join(LOGO_DIR, f"{team_id}.png")
+                        logo_path = os.path.join(LOGO_DIR, f"{int(team_id)}.png")
 
                         if os.path.exists(logo_path):
                             try:
@@ -113,6 +136,14 @@ def make_image_files():
                                 logging.error(
                                     f"Error processing logo {logo_path}: {e}"
                                 )
+                        else:
+                            logging.warning(
+                                f"Logo file missing on disk: {logo_path}"
+                            )
+                    else:
+                        logging.warning(
+                            f"Could not find team ID for record: {team}"
+                        )
 
                     wins = team.get("w", 0)
                     losses = team.get("l", 0)
@@ -151,9 +182,6 @@ def make_image_files():
 
                 background.save(file_path)
                 logging.info(f"Saved standings image to {file_path}")
-
-                if sys.platform.startswith("win32"):
-                    os.startfile(file_path)
 
     except Exception as e:
         logging.error(f"Error generating standings: {e}")
