@@ -7,8 +7,8 @@ import time
 from PIL import Image
 
 # Import script modules
-import RaspberryPi_JetsonNano.python.Windows.Game_info as game_info
-import RaspberryPi_JetsonNano.python.Windows.mlb as mlb
+import Game_info as game_info
+import mlb
 
 # Dynamic directory resolution for standings/game PNGs across Linux & Windows
 if sys.platform.startswith("linux"):
