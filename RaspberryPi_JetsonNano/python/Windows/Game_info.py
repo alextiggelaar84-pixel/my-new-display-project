@@ -14,7 +14,7 @@ EPD_WIDTH = 800
 EPD_HEIGHT = 480
 
 if sys.platform.startswith("linux"):
-    OUTPUT_DIR = os.path.expanduser("~/testrepo/e-Paper/standings")
+    OUTPUT_DIR = os.path.expanduser("~/my-new-display-project/e-Paper/standings")
 else:
     OUTPUT_DIR = r"C:\Users\sherr\Documents\git\real_eink\standings"
 
