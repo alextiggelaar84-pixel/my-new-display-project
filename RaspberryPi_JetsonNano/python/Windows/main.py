@@ -32,17 +32,21 @@ for lib_path in possible_lib_paths:
     if os.path.exists(lib_path) and lib_path not in sys.path:
         sys.path.append(lib_path)
 
-# Try importing the hardware driver
-try:
-    from waveshare_epd import epd7in5_V2
-
-    HARDWARE_CONNECTED = True
-    logging.info("Waveshare e-Paper library successfully loaded!")
-except ImportError as e:
+# The Windows runner generates images and cannot use the Linux GPIO/SPI driver.
+if sys.platform.startswith("win"):
     HARDWARE_CONNECTED = False
-    logging.warning(
-        f"Waveshare library not found ({e}). Running in simulation mode."
-    )
+    logging.info("Windows detected; running in simulation mode.")
+else:
+    try:
+        from waveshare_epd import epd7in5_V2
+
+        HARDWARE_CONNECTED = True
+        logging.info("Waveshare e-Paper library successfully loaded!")
+    except (ImportError, OSError) as e:
+        HARDWARE_CONNECTED = False
+        logging.warning(
+            f"Waveshare library unavailable ({e}). Running in simulation mode."
+        )
 
 TWELVE_HOURS_IN_SECONDS = 12 * 60 * 60
 TEN_MINUTES_IN_SECONDS = 10 * 60
@@ -124,19 +128,17 @@ def start_game_info_generator_loop():
 
 
 def run_display_cycle():
-    """Main loop: launches image generators and cycles generated images on e-Paper."""
     epd = None
     if HARDWARE_CONNECTED:
         epd = epd7in5_V2.EPD()
 
-    # Diagnostic output
     log_logo_diagnostics()
 
-    # Initial generation checks on startup
+    # Initial checks on startup
     game_info.generate_game_image()
     check_and_generate_standings()
 
-    # Start background generator threads
+    # Start background threads
     threading.Thread(
         target=start_standings_generator_loop, daemon=True
     ).start()
@@ -147,16 +149,23 @@ def run_display_cycle():
     logging.info("Starting image rotation loop...")
 
     while True:
+        # Fetch fresh list of images from disk at the beginning of every cycle
         images = get_all_display_images()
 
         if not images:
             logging.warning(
-                "No images available to display. Waiting 3 minutes..."
+                "No images found in directory. Retrying in 3 minutes..."
             )
             time.sleep(THREE_MINUTES_IN_SECONDS)
             continue
 
+        logging.info(f"Loaded {len(images)} images for display loop: {images}")
+
         for img_path in images:
+            # Re-verify file exists before attempting to open
+            if not os.path.exists(img_path):
+                continue
+
             logging.info(
                 f"Displaying on E-Paper: {os.path.basename(img_path)}"
             )
@@ -171,7 +180,6 @@ def run_display_cycle():
                         logging.info(
                             f"[Simulation Mode] Would render: {img_path}"
                         )
-
             except Exception as e:
                 logging.error(f"Failed to display image {img_path}: {e}")
 
