@@ -14,9 +14,7 @@ import mlb
 if sys.platform.startswith("linux"):
     MLB_STANDINGS_DIR = os.path.expanduser("~/testrepo/e-Paper/standings")
 else:
-    MLB_STANDINGS_DIR = (
-        r"C:\Users\sherr\Documents\git\real_eink\standings"
-    )
+    MLB_STANDINGS_DIR = r"C:\Users\sherr\Documents\git\real_eink\standings"
 
 os.makedirs(MLB_STANDINGS_DIR, exist_ok=True)
 
@@ -24,13 +22,14 @@ os.makedirs(MLB_STANDINGS_DIR, exist_ok=True)
 script_dir = os.path.dirname(os.path.abspath(__file__))
 possible_lib_paths = [
     os.path.join(script_dir, "lib"),
+    os.path.abspath(os.path.join(script_dir, "..", "lib")),
     os.path.expanduser(
         "~/testrepo/e-Paper/RaspberryPi_JetsonNano/python/lib"
     ),
 ]
 
 for lib_path in possible_lib_paths:
-    if os.path.exists(lib_path):
+    if os.path.exists(lib_path) and lib_path not in sys.path:
         sys.path.append(lib_path)
 
 # Try importing the hardware driver
@@ -44,6 +43,7 @@ except ImportError as e:
     logging.warning(
         f"Waveshare library not found ({e}). Running in simulation mode."
     )
+
 TWELVE_HOURS_IN_SECONDS = 12 * 60 * 60
 TEN_MINUTES_IN_SECONDS = 10 * 60
 THREE_MINUTES_IN_SECONDS = 180
@@ -75,7 +75,8 @@ def check_and_generate_standings():
         file_age = time.time() - oldest_file_time
         if file_age >= TWELVE_HOURS_IN_SECONDS:
             logging.info(
-                f"Standings are {file_age / 3600:.1f} hours old. Triggering regeneration..."
+                f"Standings are {file_age / 3600:.1f} hours old. Triggering"
+                " regeneration..."
             )
             should_run = True
 
@@ -109,7 +110,6 @@ def run_display_cycle():
     epd = None
     if HARDWARE_CONNECTED:
         epd = epd7in5_V2.EPD()
-        epd.init()
 
     # Initial generation checks on startup
     game_info.generate_game_image()
@@ -147,7 +147,9 @@ def run_display_cycle():
                         epd.display(epd.getbuffer(img.convert("1")))
                         epd.sleep()
                     else:
-                        img.show()
+                        logging.info(
+                            f"[Simulation Mode] Would render: {img_path}"
+                        )
 
             except Exception as e:
                 logging.error(f"Failed to display image {img_path}: {e}")
@@ -156,4 +158,10 @@ def run_display_cycle():
 
 
 if __name__ == "__main__":
-    run_display_cycle()
+    try:
+        run_display_cycle()
+    except KeyboardInterrupt:
+        logging.info("Script terminated by user.")
+        if HARDWARE_CONNECTED:
+            epd7in5_V2.epdconfig.module_exit()
+        sys.exit()

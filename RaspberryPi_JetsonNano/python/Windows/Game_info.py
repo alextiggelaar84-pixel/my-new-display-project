@@ -24,38 +24,18 @@ logging.basicConfig(
 
 
 def get_logo_dir():
-    pi_logo_path = os.path.expanduser("~/my-new-display-project/MLB Logos")
-    if os.path.exists(pi_logo_path):
-        return pi_logo_path
-
-    current_path = os.path.abspath(__file__)
-    parts = current_path.split(os.sep)
-
-    git_idx = -1
-    for i, part in enumerate(parts):
-        if part.lower() == "git":
-            git_idx = i
-            break
-
-    if git_idx != -1:
-        base_git = os.sep.join(parts[: git_idx + 1])
-        for folder_name in ["real_eink", "real eink"]:
-            candidate = os.path.join(base_git, folder_name, "MLB Logos")
-            if os.path.exists(candidate):
-                return candidate
-
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    for relative_path in [
-        os.path.join(script_dir, "..", "..", "MLB Logos"),
-        os.path.join(script_dir, "..", "MLB Logos"),
-        os.path.join(script_dir, "MLB Logos"),
+    candidates = [
+        os.path.expanduser("~/my-new-display-project/MLB Logos"),
+        os.path.expanduser("~/testrepo/e-Paper/MLB Logos"),
+        os.path.abspath(os.path.join(script_dir, "..", "MLB Logos")),
+        os.path.abspath(os.path.join(script_dir, "MLB Logos")),
         r"C:\git\real_eink\MLB Logos",
-    ]:
-        resolved = os.path.abspath(relative_path)
-        if os.path.exists(resolved):
-            return resolved
-
-    return pi_logo_path
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return candidates[0]
 
 
 LOGO_DIR = get_logo_dir()

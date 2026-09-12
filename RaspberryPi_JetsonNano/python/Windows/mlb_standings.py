@@ -14,20 +14,18 @@ logging.basicConfig(level=logging.INFO)
 
 
 def get_logo_dir():
-    pi_logo_path = os.path.expanduser("~/my-new-display-project/MLB Logos")
-    if os.path.exists(pi_logo_path):
-        return pi_logo_path
-
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    for relative_path in [
-        os.path.join(script_dir, "..", "..", "MLB Logos"),
-        os.path.join(script_dir, "..", "MLB Logos"),
+    candidates = [
+        os.path.expanduser("~/my-new-display-project/MLB Logos"),
+        os.path.expanduser("~/testrepo/e-Paper/MLB Logos"),
+        os.path.abspath(os.path.join(script_dir, "..", "MLB Logos")),
+        os.path.abspath(os.path.join(script_dir, "MLB Logos")),
         r"C:\git\real_eink\MLB Logos",
-    ]:
-        resolved = os.path.abspath(relative_path)
-        if os.path.exists(resolved):
-            return resolved
-    return pi_logo_path
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return candidates[0]
 
 
 LOGO_DIR = get_logo_dir()
@@ -38,6 +36,18 @@ class epd:
     height = 480
 
 
+def load_font(size):
+    try:
+        return ImageFont.truetype(
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size
+        )
+    except IOError:
+        try:
+            return ImageFont.truetype("arial.ttf", size)
+        except IOError:
+            return ImageFont.load_default()
+
+
 def make_image_files():
     try:
         logging.info("Initializing 7.5in V2 Display Canvas...")
@@ -46,24 +56,27 @@ def make_image_files():
         text = "American League East"
 
         center_x = epd.width // 2
-
-        try:
-            font = ImageFont.truetype(
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30
-            )
-        except IOError:
-            logging.warning("DejaVu font not found, falling back to default.")
-            font = ImageFont.load_default()
+        font = load_font(30)
 
         # Dynamic Logo Loading
         logo_path = os.path.join(LOGO_DIR, "143.png")
 
-        for i in range(5):
-            if os.path.exists(logo_path):
-                teamlogo = Image.open(logo_path)
-                teamlogo = teamlogo.resize((75, 75))
-                height_offset = i * 85 + 60
-                background.paste(teamlogo, (40, height_offset))
+        if os.path.exists(logo_path):
+            try:
+                logo = Image.open(logo_path).convert("RGBA")
+                logo = logo.resize((75, 75), Image.Resampling.LANCZOS)
+
+                bg = Image.new("RGBA", (75, 75), (255, 255, 255, 255))
+                bg.paste(logo, (0, 0), logo)
+                bw_logo = bg.convert("L").point(
+                    lambda p: 0 if p < 200 else 255, mode="1"
+                )
+
+                for i in range(5):
+                    height_offset = i * 85 + 60
+                    background.paste(bw_logo, (40, height_offset))
+            except Exception as logo_err:
+                logging.error(f"Error processing test logo {logo_path}: {logo_err}")
 
         draw.text((center_x, 15), text, font=font, fill=0, anchor="mm")
         draw.text((250, 45), "W-L", font=font, fill=0, anchor="mm")

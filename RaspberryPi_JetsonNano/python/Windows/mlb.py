@@ -4,7 +4,6 @@ import sys
 from PIL import Image, ImageDraw, ImageFont
 import statsapi
 
-# Dynamic path resolution for output directory
 if sys.platform.startswith("linux"):
     save_dir = os.path.expanduser("~/testrepo/e-Paper/standings")
 else:
@@ -23,30 +22,24 @@ class epd:
 
 
 def get_logo_dir():
-    """Locates MLB Logos directory across Pi and Windows environments."""
-    pi_logo_path = os.path.expanduser("~/testrepo/e-Paper/MLB Logos")
-    if os.path.exists(pi_logo_path):
-        return pi_logo_path
-
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    for relative_path in [
-        os.path.join(script_dir, "..", "..", "MLB Logos"),
-        os.path.join(script_dir, "..", "MLB Logos"),
-        os.path.join(script_dir, "MLB Logos"),
+    candidates = [
+        os.path.expanduser("~/my-new-display-project/MLB Logos"),
+        os.path.expanduser("~/testrepo/e-Paper/MLB Logos"),
+        os.path.abspath(os.path.join(script_dir, "..", "MLB Logos")),
+        os.path.abspath(os.path.join(script_dir, "MLB Logos")),
         r"C:\git\real_eink\MLB Logos",
-    ]:
-        resolved = os.path.abspath(relative_path)
-        if os.path.exists(resolved):
-            return resolved
-
-    return pi_logo_path
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return candidates[0]
 
 
 LOGO_DIR = get_logo_dir()
 
 
 def load_font(size):
-    """Safely loads a TrueType font or falls back to standard default."""
     try:
         return ImageFont.truetype(
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size
@@ -66,7 +59,6 @@ def make_image_files():
         font_header = load_font(30)
         font_data = load_font(24)
 
-        # Process each league and division
         for league_id in leagues:
             standings = statsapi.standings_data(leagueId=league_id)
 
@@ -95,12 +87,9 @@ def make_image_files():
 
                 # Loop through division teams
                 for i, team in enumerate(division.get("teams", [])):
-                    team_name = team.get("name")
+                    team_id = team.get("team_id") or team.get("id")
 
-                    # Fetch team ID dynamically from team name
-                    team_info = statsapi.lookup_team(team_name)
-                    if team_info:
-                        team_id = team_info[0]["id"]
+                    if team_id:
                         logo_path = os.path.join(LOGO_DIR, f"{team_id}.png")
 
                         if os.path.exists(logo_path):
@@ -110,7 +99,6 @@ def make_image_files():
                                     (75, 75), Image.Resampling.LANCZOS
                                 )
 
-                                # Convert RGBA transparent PNG to 1-bit B&W
                                 bg = Image.new(
                                     "RGBA", (75, 75), (255, 255, 255, 255)
                                 )
@@ -156,17 +144,14 @@ def make_image_files():
                         anchor="mm",
                     )
 
-                # Format filename with _standings.png for main.py search pattern
                 safe_div_name = div_name.replace(" ", "_").lower()
                 file_path = os.path.join(
                     save_dir, f"{safe_div_name}_standings.png"
                 )
 
-                # Save the completed division image
                 background.save(file_path)
                 logging.info(f"Saved standings image to {file_path}")
 
-                # Windows-only preview (bypasses os.startfile crash on Linux)
                 if sys.platform.startswith("win32"):
                     os.startfile(file_path)
 
