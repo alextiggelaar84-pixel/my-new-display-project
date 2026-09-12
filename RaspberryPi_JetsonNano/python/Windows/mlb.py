@@ -1,112 +1,178 @@
-import os
-from pydoc import text
-import sys
 import logging
-from tkinter import font
-import statsapi
+import os
+import sys
 from PIL import Image, ImageDraw, ImageFont
+import statsapi
 
-# Define the target folder
-save_dir = r"C:\git\real_eink\RaspberryPi_JetsonNano\python\Windows\standings"
+# Dynamic path resolution for output directory
+if sys.platform.startswith("linux"):
+    save_dir = os.path.expanduser("~/testrepo/e-Paper/standings")
+else:
+    save_dir = r"C:\Users\sherr\Documents\git\real_eink\standings"
 
-# Ensure the target folder exists
 os.makedirs(save_dir, exist_ok=True)
 
 leagues = [103, 104]  # 103 for AL, 104 for NL
 
-# Set up local library path
-libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'lib')
-if os.path.exists(libdir):
-    sys.path.append(libdir)
-
-##from waveshare_epd import epd7in5_V2
-
 logging.basicConfig(level=logging.INFO)
+
 
 class epd:
     width = 800
     height = 480
 
 
+def get_logo_dir():
+    """Locates MLB Logos directory across Pi and Windows environments."""
+    pi_logo_path = os.path.expanduser("~/testrepo/e-Paper/MLB Logos")
+    if os.path.exists(pi_logo_path):
+        return pi_logo_path
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    for relative_path in [
+        os.path.join(script_dir, "..", "..", "MLB Logos"),
+        os.path.join(script_dir, "..", "MLB Logos"),
+        os.path.join(script_dir, "MLB Logos"),
+        r"C:\git\real_eink\MLB Logos",
+    ]:
+        resolved = os.path.abspath(relative_path)
+        if os.path.exists(resolved):
+            return resolved
+
+    return pi_logo_path
+
+
+LOGO_DIR = get_logo_dir()
+
+
+def load_font(size):
+    """Safely loads a TrueType font or falls back to standard default."""
+    try:
+        return ImageFont.truetype(
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size
+        )
+    except IOError:
+        try:
+            return ImageFont.truetype("arial.ttf", size)
+        except IOError:
+            return ImageFont.load_default()
+
+
 def make_image_files():
     try:
-        logging.info("Initializing 7.5in V2 Display...")
-        ##epd = epd7in5_V2.EPD()
-        ##epd.init()           
-        ##epd.Clear()
+        logging.info("Generating division standings images...")
 
-        # Calculate middle coordinates for header
         center_x = epd.width // 2
-        center_y = epd.height // 2
-
-        try:
-            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30)
-            print("Using DejaVuSans-Bold font at size 30")
-        except IOError:
-            logging.warning("DejaVu font not found, falling back to default.")
-            font = ImageFont.load_default()
-            print("Using Default font")
+        font_header = load_font(30)
+        font_data = load_font(24)
 
         # Process each league and division
         for league_id in leagues:
             standings = statsapi.standings_data(leagueId=league_id)
-            
+
             for division_id, division in standings.items():
-                div_name = division.get('div_name', 'Division')
-                background = Image.new('1', (epd.width, epd.height), 255)
+                div_name = division.get("div_name", "Division")
+                background = Image.new("1", (epd.width, epd.height), 255)
                 draw = ImageDraw.Draw(background)
-                
-                # Draw Division Header
-                draw.text((center_x, 15), div_name, font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30), fill=0, anchor="mm")
-                draw.text((250,45), "W-L", font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30), fill=0, anchor="mm")
-                draw.text((450,45), "PCT", font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30), fill=0, anchor="mm")
-                draw.text((650,45), "GB", font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30), fill=0, anchor="mm")
-                            
+
+                # Draw Division Headers
+                draw.text(
+                    (center_x, 15),
+                    div_name,
+                    font=font_header,
+                    fill=0,
+                    anchor="mm",
+                )
+                draw.text(
+                    (250, 45), "W-L", font=font_header, fill=0, anchor="mm"
+                )
+                draw.text(
+                    (450, 45), "PCT", font=font_header, fill=0, anchor="mm"
+                )
+                draw.text(
+                    (650, 45), "GB", font=font_header, fill=0, anchor="mm"
+                )
+
                 # Loop through division teams
-                for i, team in enumerate(division.get('teams', [])):
-                    team_name = team.get('name')
-                    
+                for i, team in enumerate(division.get("teams", [])):
+                    team_name = team.get("name")
+
                     # Fetch team ID dynamically from team name
                     team_info = statsapi.lookup_team(team_name)
                     if team_info:
-                        team_id = team_info[0]['id']
-                        logo_path = f"C:\\git\\real_eink\\MLB Logos\\{team_id}.png"
-                        
+                        team_id = team_info[0]["id"]
+                        logo_path = os.path.join(LOGO_DIR, f"{team_id}.png")
+
                         if os.path.exists(logo_path):
-                            teamlogo = Image.open(logo_path).resize((75, 75))
-                            height_offset = i * 80 + 60
-                            background.paste(teamlogo, (40, height_offset))
-                    
-                    wins = team.get('w', 0)
-                    losses = team.get('l', 0)
-                    gb = team.get('gb', '-')
-                    pct = wins / (wins + losses) if (wins + losses) > 0 else 0
+                            try:
+                                logo = Image.open(logo_path).convert("RGBA")
+                                logo = logo.resize(
+                                    (75, 75), Image.Resampling.LANCZOS
+                                )
+
+                                # Convert RGBA transparent PNG to 1-bit B&W
+                                bg = Image.new(
+                                    "RGBA", (75, 75), (255, 255, 255, 255)
+                                )
+                                bg.paste(logo, (0, 0), logo)
+                                bw_logo = bg.convert("L").point(
+                                    lambda p: 0 if p < 200 else 255, mode="1"
+                                )
+
+                                height_offset = i * 80 + 60
+                                background.paste(bw_logo, (40, height_offset))
+                            except Exception as e:
+                                logging.error(
+                                    f"Error processing logo {logo_path}: {e}"
+                                )
+
+                    wins = team.get("w", 0)
+                    losses = team.get("l", 0)
+                    gb = team.get("gb", "-")
+                    pct = (
+                        wins / (wins + losses) if (wins + losses) > 0 else 0
+                    )
 
                     height_offset = i * 80 + 100
-                    draw.text((250, height_offset), f"{wins}-{losses}", font=font, fill=0, anchor="mm")
-                    draw.text((450, height_offset), f"{pct:.3f}", font=font, fill=0, anchor="mm")
-                    draw.text((650, height_offset), f"{gb}", font=font, fill=0, anchor="mm")
+                    draw.text(
+                        (250, height_offset),
+                        f"{wins}-{losses}",
+                        font=font_data,
+                        fill=0,
+                        anchor="mm",
+                    )
+                    draw.text(
+                        (450, height_offset),
+                        f"{pct:.3f}",
+                        font=font_data,
+                        fill=0,
+                        anchor="mm",
+                    )
+                    draw.text(
+                        (650, height_offset),
+                        f"{gb}",
+                        font=font_data,
+                        fill=0,
+                        anchor="mm",
+                    )
 
-                # Clean division name and create full file path
+                # Format filename with _standings.png for main.py search pattern
                 safe_div_name = div_name.replace(" ", "_").lower()
-                file_path = os.path.join(save_dir, f"{safe_div_name}_standings.png")
+                file_path = os.path.join(
+                    save_dir, f"{safe_div_name}_standings.png"
+                )
 
                 # Save the completed division image
                 background.save(file_path)
-                logging.info(f"Saved: {file_path}")
+                logging.info(f"Saved standings image to {file_path}")
 
-                # Automatically open image viewer on Windows
-                os.startfile(file_path)
+                # Windows-only preview (bypasses os.startfile crash on Linux)
+                if sys.platform.startswith("win32"):
+                    os.startfile(file_path)
 
-                input("Press Enter to continue to next division...")
+    except Exception as e:
+        logging.error(f"Error generating standings: {e}")
 
-    except IOError as e:
-        logging.error(f"Hardware/SPI error: {e}")
 
-    except KeyboardInterrupt:    
-        logging.info("Script stopped by user.")
-        sys.exit()
-
-# CALL THE FUNCTION SO IT ACTUALLY RUNS
 if __name__ == "__main__":
     make_image_files()
