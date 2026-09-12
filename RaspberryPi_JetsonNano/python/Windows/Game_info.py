@@ -24,7 +24,7 @@ logging.basicConfig(
 
 
 def get_logo_dir():
-    pi_logo_path = os.path.expanduser("~/testrepo/e-Paper/MLB Logos")
+    pi_logo_path = os.path.expanduser("~/my-new-display-project/MLB Logos")
     if os.path.exists(pi_logo_path):
         return pi_logo_path
 
