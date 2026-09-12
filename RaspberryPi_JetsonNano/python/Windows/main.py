@@ -7,8 +7,8 @@ import time
 from PIL import Image
 
 # Import script modules
-import Game_info as game_info
-import mlb
+import RaspberryPi_JetsonNano.python.Windows.Game_info as game_info
+import RaspberryPi_JetsonNano.python.Windows.mlb as mlb
 
 # Dynamic directory resolution for standings/game PNGs across Linux & Windows
 if sys.platform.startswith("linux"):
@@ -47,7 +47,7 @@ def get_all_display_images():
 
 def check_and_generate_standings():
     """Runs mlb.make_image_files() if standings are missing or > 12 hours old."""
-    pattern = os.path.join(MLB_STANDINGS_DIR, "*_standings.png")
+    pattern = os.path.join(MLB_STANDINGS_DIR, "*standings.png")
     images = glob.glob(pattern)
 
     should_run = False
