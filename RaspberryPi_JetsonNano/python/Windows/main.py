@@ -20,16 +20,30 @@ else:
 
 os.makedirs(MLB_STANDINGS_DIR, exist_ok=True)
 
+# Dynamic path resolution to locate your Waveshare driver folder
+script_dir = os.path.dirname(os.path.abspath(__file__))
+possible_lib_paths = [
+    os.path.join(script_dir, "lib"),
+    os.path.expanduser(
+        "~/testrepo/e-Paper/RaspberryPi_JetsonNano/python/lib"
+    ),
+]
+
+for lib_path in possible_lib_paths:
+    if os.path.exists(lib_path):
+        sys.path.append(lib_path)
+
+# Try importing the hardware driver
 try:
     from waveshare_epd import epd7in5_V2
 
     HARDWARE_CONNECTED = True
-except ImportError:
+    logging.info("Waveshare e-Paper library successfully loaded!")
+except ImportError as e:
     HARDWARE_CONNECTED = False
     logging.warning(
-        "Waveshare library not found. Running in simulation mode."
+        f"Waveshare library not found ({e}). Running in simulation mode."
     )
-
 TWELVE_HOURS_IN_SECONDS = 12 * 60 * 60
 TEN_MINUTES_IN_SECONDS = 10 * 60
 THREE_MINUTES_IN_SECONDS = 180
