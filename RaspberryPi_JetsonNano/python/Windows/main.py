@@ -53,6 +53,25 @@ logging.basicConfig(
 )
 
 
+def log_logo_diagnostics():
+    """Prints out logo path configuration to debug missing standings logos."""
+    game_logo_dir = getattr(game_info, "LOGO_DIR", "NOT_FOUND")
+    mlb_logo_dir = getattr(mlb, "LOGO_DIR", "NOT_FOUND")
+
+    print("\n--- LOGO PATH DIAGNOSTICS ---")
+    print(f"[Game_info.py] LOGO_DIR : {game_logo_dir}")
+    print(f"[mlb.py]       LOGO_DIR : {mlb_logo_dir}")
+
+    if os.path.exists(mlb_logo_dir):
+        files = os.listdir(mlb_logo_dir)
+        pngs = [f for f in files if f.endswith(".png")]
+        print(f"[mlb.py] Found {len(pngs)} PNG logo files in {mlb_logo_dir}")
+        print(f"[mlb.py] Sample files: {pngs[:5]}")
+    else:
+        print(f"[ERROR] LOGO_DIR for mlb.py does not exist on disk!")
+    print("-----------------------------\n")
+
+
 def get_all_display_images():
     """Returns a sorted list of all generated PNG files."""
     pattern = os.path.join(MLB_STANDINGS_DIR, "*.png")
@@ -110,6 +129,9 @@ def run_display_cycle():
     epd = None
     if HARDWARE_CONNECTED:
         epd = epd7in5_V2.EPD()
+
+    # Diagnostic output
+    log_logo_diagnostics()
 
     # Initial generation checks on startup
     game_info.generate_game_image()
